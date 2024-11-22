@@ -6,7 +6,7 @@ server.set('trust proxy', true)
 const PORT = 5000;
 
 const MAX_ROOMS = 4;
-const MAX_USERS = 1;
+const MAX_USERS = 2;
 
 var currentUsers = 0;
 
@@ -74,6 +74,37 @@ server.post('/api/rooms/join/:roomId', (req, res) => {
     res.send({"message":message});
 
 });
+
+server.post('/api/room/leave/:roomId', (req, res) => {
+    console.log(timestamp() + "Client at " + req.ip + " tried to leave room " + req.params.roomId);
+    console.log(req.body.user);
+    let opCode = removeUserFromRoom(req.body.user, req.params.roomId);
+    let status, message;
+    switch(opCode){
+        case 1:
+            status = 200;
+            message = "Left room"
+            console.log(timestamp() + req.ip + "left room " + req.params.roomId);
+            break;
+        case 2:
+            status = 404;
+            message = "Room does not exist";
+            console.log(timestamp()  + req.ip + " couldn't leave room " + req.params.roomId + ": room does not exist."); 
+            break;
+        case 3:
+            status = 401;
+            message = "User not in this room";
+            console.log(timestamp() +req.ip + " couldn't leave room " + req.params.roomId + ": user not in this room."); 
+            break;
+        default:
+            status = 500;
+            message = "Internal server error. Contact system administrator."
+            console.log(timestamp() +req.ip + " couldn't post to room " + req.params.roomId +": some obscure error has ocurred."); 
+            break;
+    }
+    res.status(status);
+    res.send({"message" : message});
+})
 
 server.post('/api/message/send/:roomId', (req, res) => {
     console.log(timestamp() + "User at " + req.ip + " tried to post to room " + req.params.roomId);
@@ -168,6 +199,30 @@ function addUserToRoom(nickname, roomId){
     return 3;
 }
 
+function removeUserFromRoom(userLeaving, roomId){
+    const room = rooms.find(r => r.id === roomId);
+    if(room){
+        console.log(room.users);
+        const user = room.users.find(u => compareUsers(u, userLeaving));
+        console.log(user);
+        if(user){
+            room.users = room.users.filter(u => u != user);
+            if(room.currentUsers > 0){
+                room.currentUsers = room.currentUsers - 1;
+                
+            }
+            if(currentUsers > 0){
+                currentUsers = currentUsers - 1;
+            }
+            return 1;
+        }else{
+            return 2;
+        }
+    }else{
+        return 3;
+    }
+}
+
 function postMessageToRoomCheck(user, roomId){
     for(room in rooms){
         if(rooms[room].id == roomId){
@@ -230,6 +285,16 @@ function compareMessages(message1, message2){
         (message1.content == message2.content) &&
         (message1.user == message2.user) &&
         (message1.ts == message2.ts)
+    ){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+function compareUsers(user1, user2){
+    if(
+        (user1.nickname == user2.nickname)
     ){
         return true;
     }else{

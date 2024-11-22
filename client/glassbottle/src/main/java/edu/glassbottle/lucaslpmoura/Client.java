@@ -23,8 +23,10 @@ public class Client {
     private static String loginEndpoint = "/api/login";
     private static String listRoomsEndpoint = "/api/rooms/list";
     private static String joinRoomEndpoint = "/api/rooms/join/";
+    private static String leaveRoomEndpoint = "/api/room/leave/";
     private static String sendMessageEndpoint = "/api/message/send/";
     private static String receiveMessageEndpoint = "/api/message/receive/";
+    
 
     // HTTP CLIENT
     private static HttpClient client = HttpClient.newHttpClient();
@@ -145,6 +147,7 @@ public class Client {
 
     }
 
+
     public static void joinRoom(String roomId) throws IOException, InterruptedException {
         //new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); // TODO: Add Linux Support
 
@@ -169,6 +172,29 @@ public class Client {
             state = State.MAIN_MENU;
         }
     }
+
+
+    public static void leaveRoom() throws IOException, InterruptedException{
+        JSONObject jsonMessage = new JSONObject();
+        JSONObject jsonNickname = new JSONObject();
+        jsonNickname.put("nickname", nickname);
+        jsonMessage.put("user", jsonNickname);
+
+        try{
+            HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create(serverAddress + leaveRoomEndpoint + currentRoomId))
+                            .header("Content-Type", "application/json")
+                            .POST(BodyPublishers.ofString(jsonMessage.toString()))
+                            .build();
+
+            client.send(request, HttpResponse.BodyHandlers.ofString());
+        }catch(Exception e){
+            System.err.println("Error leaving room: " + e.getMessage());
+        }
+        
+
+    }
+
 
     public static void parseRoom() throws IOException, InterruptedException {
         boolean isReceiveThreadRunning = false;
@@ -211,6 +237,7 @@ public class Client {
             }
             String message = sc.nextLine();
             if(message.equals("q")){
+                leaveRoom();
                 state = State.MAIN_MENU;
                 currentRoomId = "";
                 break;
