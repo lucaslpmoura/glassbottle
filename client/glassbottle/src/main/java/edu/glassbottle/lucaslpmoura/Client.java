@@ -80,7 +80,7 @@ public class Client {
     // Prints the main menu and handles basic joining/creating rooms
 
     public static void mainMenu() throws IOException, InterruptedException {
-        
+
         state = State.MAIN_MENU;
 
         System.out.println("You are connected as: " + nickname);
@@ -96,32 +96,37 @@ public class Client {
                         joinRoom(roomList.getJSONObject(roomCode - 1).getString("id"));
                         return;
                     } catch (Exception e) {
-                        //new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); // TODO: Add Linux Support
+                        // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
+                        // TODO: Add Linux Support
                         System.out.println("Couldn't join room: " + e.getMessage());
                     }
                 } else {
-                    //new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); // TODO: Add Linux Support
-                    listRooms();
+                    // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
+                    // TODO: Add Linux Support
+                    roomList = listRooms();
                     System.out.println("Please enter an valid option or command.");
                 }
             } else {
                 if (option.equals("c")) {
                     createRoom();
+                    roomList = listRooms();
                 }
                 if (option.equals("r")) {
-                    //new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); // TODO: Add Linux Support
-                    listRooms();
+                    // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
+                    // TODO: Add Linux Support
+                    roomList = listRooms();
                     System.out.println("Room List refreshed.");
                 } else {
-                    //new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); // TODO: Add Linux Support
-                    listRooms();
+                    // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
+                    // TODO: Add Linux Support
+                    roomList = listRooms();
                     System.out.println("Please enter an valid option or command.");
                 }
             }
         }
     }
 
-    public static void createRoom() throws IOException, InterruptedException{
+    public static void createRoom() throws IOException, InterruptedException {
         System.out.print("Room name: ");
 
         sc.nextLine(); // The input needs to be flushed here, god knows why
@@ -135,14 +140,16 @@ public class Client {
         room.put("maxUsers", maxUsers);
 
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(serverAddress + createRoomEndpoint))
-            .header("Content-Type", "application/json")
-            .POST(BodyPublishers.ofString(room.toString()))
-            .build();
+                .uri(URI.create(serverAddress + createRoomEndpoint))
+                .header("Content-Type", "application/json")
+                .POST(BodyPublishers.ofString(room.toString()))
+                .build();
 
         HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
-
-
+        // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
+        // TODO: Add Linux Supoort
+        System.out.println(response.body().toString());
+ 
     }
 
     public static JSONArray listRooms() throws IOException, InterruptedException {
