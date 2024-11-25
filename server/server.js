@@ -6,7 +6,7 @@ server.set('trust proxy', true)
 const PORT = 5000;
 
 const MAX_ROOMS = 4;
-const MAX_USERS = 2;
+const MAX_USERS = 10;
 
 var currentUsers = 0;
 
@@ -20,7 +20,6 @@ testRoom = {
 
 testUser = {
     "nickname" : "John Doe",
-    "id": 100
 }
 
 let rooms = [testRoom];
@@ -169,7 +168,28 @@ server.post('/api/message/receive/:roomId', (req, res) => {
 
 
 server.post('/api/rooms/create', (req, res) => {
-    console.log(req.body)
+    console.log(timestamp() + "Client at " + req.ip + " trying to create room ");
+    let opCode = createRoom(req.body);
+    let status, message;
+    switch(opCode){
+        case 0:
+            status = 200;
+            message = "Created room."
+            console.log(timestamp() + req.ip + " createad a room");
+            break;
+        case 1:
+            status = 401;
+            message = "Max number of rooms reached."
+            console.log(timestamp() + req.ip + " failed to create a room - max number of rooms reached");
+            break;
+        default:
+            status = 500;
+            message = "Internal server error. Contact system administrator."
+            console.log(timestamp() +req.ip + " couldn't post to room " + req.params.roomId +": some obscure error has ocurred."); 
+            break;
+    }
+    res.status(status);
+    res.send({"message" : message});
 })
 
 
@@ -259,6 +279,33 @@ function postMessageToRoom(user, roomId, message){
         }
     }
 }
+
+function createRoom(roomToCreate){
+    if(rooms.length >= MAX_ROOMS){
+        return 0;
+    }else{
+        let roomId = getRanHex(6);
+        let newRoom = {
+            "name" : roomToCreate.name,
+            "id" : roomId,
+            'users' : [],
+            'maxUsers' : roomToCreate.maxUsers,
+            'messages' : []
+        }
+        rooms.push(newRoom);
+        return 1;
+    }
+}
+
+const getRanHex = size => {
+    let result = [];
+    let hexRef = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
+  
+    for (let n = 0; n < size; n++) {
+      result.push(hexRef[Math.floor(Math.random() * 16)]);
+    }
+    return result.join('');
+  }
 
 function timestamp(){
     let now = new Date(Date.now());
