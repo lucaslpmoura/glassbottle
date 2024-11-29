@@ -14,8 +14,9 @@ testRoom = {
     "name": "Sala de Teste",
     "id": "a1b2c3",
     "users": [],
-    "maxUsers" : 1,
-    "messages": []
+    "maxUsers" : 2,
+    "messages": [],
+    "passwordProtectd": false
 }
 
 testUser = {
@@ -101,6 +102,7 @@ server.post('/api/room/leave/:roomId', (req, res) => {
             console.log(timestamp() +req.ip + " couldn't post to room " + req.params.roomId +": some obscure error has ocurred."); 
             break;
     }
+    postLeaveMessage(req.body.user, req.params.roomId);
     res.status(status);
     res.send({"message" : message});
 })
@@ -222,9 +224,7 @@ function addUserToRoom(nickname, roomId){
 function removeUserFromRoom(userLeaving, roomId){
     const room = rooms.find(r => r.id === roomId);
     if(room){
-        console.log(room.users);
         const user = room.users.find(u => compareUsers(u, userLeaving));
-        console.log(user);
         if(user){
             room.users = room.users.filter(u => u != user);
             if(room.currentUsers > 0){
@@ -276,6 +276,27 @@ function postMessageToRoom(user, roomId, message){
     for(_room in rooms){
         if(rooms[_room].id == roomId){
             rooms[_room] = room;
+        }
+    }
+}
+
+function postLeaveMessage(user, roomId){
+    const room = rooms.find(r => r.id === roomId);
+    if(room){
+        let ts = timestamp();
+        let clientTs = clientTimestamp();
+        let leaveString = user.nickname + ' has left the room.';
+        let leaveMessageJson = {
+            'content' : leaveString,
+            'user': 'server',
+            'clientTs' : clientTs,
+            'ts' : ts
+        }
+        room.messages.push(leaveMessageJson);
+        for(_room in rooms){
+            if(rooms[_room].id == roomId){
+                rooms[_room] = room;
+            }
         }
     }
 }

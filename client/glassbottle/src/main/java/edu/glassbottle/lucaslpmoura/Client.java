@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Scanner;
@@ -39,7 +40,7 @@ public class Client {
     // SYSTEM VARIABLES
     private static Scanner sc = new Scanner(System.in);
 
-    private static enum State {
+    public static enum State {
         LOGIN,
         MAIN_MENU,
         CREATE_ROOM,
@@ -149,7 +150,7 @@ public class Client {
         // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
         // TODO: Add Linux Supoort
         System.out.println(response.body().toString());
- 
+
     }
 
     public static JSONArray listRooms() throws IOException, InterruptedException {
@@ -237,21 +238,29 @@ public class Client {
                         HttpRequest request = HttpRequest.newBuilder()
                                 .uri(URI.create(serverAddress + receiveMessageEndpoint + currentRoomId))
                                 .header("Content-Type", "application/json")
+                                .timeout(Duration.ofSeconds(3))
                                 .POST(BodyPublishers.ofString(lastMessageJSON.toString()))
                                 .build();
                         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
                         if (response.statusCode() == 200) {
                             lastMessage = new JSONObject(response.body());
                             if (!lastMessage.get("content").equals("")) {
-                                System.out.print(lastMessage.get("clientTs") + " ");
-                                System.out.print(lastMessage.get("user") + ": ");
-                                System.out.println(lastMessage.get("content"));
+                                if (lastMessage.get("user").equals("server")) {
+                                    printServerMessage(lastMessageJSON);
+                                } else {
+                                    printUserMessage(lastMessageJSON);
+                                }
+
                             }
                         }
                         Thread.sleep(500);
                     } catch (Exception e) {
-                        System.out.println(e.getMessage());
+                        System.out.println("Error reading message from server. ");
+                        if(e.getMessage() != null){
+                            System.out.println(e.getMessage());
+                        }
+                        setClientState("MAIN_MENU");
+                        return;
                     }
                 }
 
@@ -306,6 +315,23 @@ public class Client {
         // new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //
         // TODO: Add Linux Support
         return;
+    }
+
+    private static void printUserMessage(JSONObject message) {
+        System.out.print(message.get("clientTs") + " ");
+        System.out.print(message.get("user") + ": ");
+        System.out.println(message.get("content"));
+    }
+
+    private static void printServerMessage(JSONObject message){
+        System.out.print(message.get("clientTs") + " ");
+        System.out.println(message.get("content"));
+    }
+
+    public static void setClientState(String newState){
+        if(newState.equals("MAIN_MENU")){
+            state = State.MAIN_MENU;
+        }
     }
 
     public static boolean isNumeric(String str) {
