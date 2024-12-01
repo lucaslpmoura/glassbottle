@@ -1,3 +1,11 @@
+/*
+Glassbottle Server
+Created by Lucas Moura, 2024
+
+A simple chat room server. Users can join existing rooms, or create new ones.
+Currently, the default values must be altered before running.
+*/
+
 const express = require('express');
 
 var server = express();
@@ -5,7 +13,7 @@ server.use(express.json());
 server.set('trust proxy', true)
 const PORT = 5000;
 
-const MAX_ROOMS = 4;
+const MAX_ROOMS = 1;
 const MAX_USERS = 10;
 
 var currentUsers = 0;
@@ -23,18 +31,15 @@ testUser = {
     "nickname" : "John Doe",
 }
 
-let rooms = [testRoom];
+let rooms = [];
 let users = [];
 
+//Test endpoint
 server.get('/teste', (req, res) => {
     res.send(JSON.stringify({'payload': 'Teste!'}));
 })
 
-server.get('/api/rooms/list', (req, res) => {
-    console.log(timestamp() + 'Sending room list to client at ' + req.ip)
-    res.send(JSON.stringify(rooms));
-})
-
+//Joing a room
 server.post('/api/rooms/join/:roomId', (req, res) => {
     console.log(timestamp() + "Client at " + req.ip + " tried to join room " + req.params.roomId);
     let opCode = addUserToRoom(req.body.nickname, req.params.roomId);
@@ -75,9 +80,10 @@ server.post('/api/rooms/join/:roomId', (req, res) => {
 
 });
 
-server.post('/api/room/leave/:roomId', (req, res) => {
+
+//Leaving a room
+server.post('/api/rooms/leave/:roomId', (req, res) => {
     console.log(timestamp() + "Client at " + req.ip + " tried to leave room " + req.params.roomId);
-    console.log(req.body.user);
     let opCode = removeUserFromRoom(req.body.user, req.params.roomId);
     let status, message;
     switch(opCode){
@@ -107,8 +113,44 @@ server.post('/api/room/leave/:roomId', (req, res) => {
     res.send({"message" : message});
 })
 
+//Creating rooms
+server.post('/api/rooms/create', (req, res) => {
+    console.log(timestamp() + "Client at " + req.ip + " trying to create room ");
+    let opCode = createRoom(req.body);
+    let status, message;
+    switch(opCode){
+        case 0:
+            status = 200;
+            message = "Created room."
+            console.log(timestamp() + req.ip + " createad a room");
+            break;
+        case 1:
+            status = 401;
+            message = "Max number of rooms reached."
+            console.log(timestamp() + req.ip + " failed to create a room - max number of rooms reached");
+            break;
+        default:
+            status = 500;
+            message = "Internal server error. Contact system administrator."
+            console.log(timestamp() +req.ip + " couldn't post to room " + req.params.roomId +": some obscure error has ocurred."); 
+            break;
+    }
+    res.status(status);
+    res.send({"message" : message});
+})
+
+
+//Requesting the room list
+server.get('/api/rooms/list', (req, res) => {
+    console.log(timestamp() + 'Sending room list to client at ' + req.ip)
+    res.send(JSON.stringify(rooms));
+})
+
+//Sending messages to a room.
 server.post('/api/message/send/:roomId', (req, res) => {
     console.log(timestamp() + "User at " + req.ip + " tried to post to room " + req.params.roomId);
+
+    //Checks to see if the user is in the room it is trying to send the message
     let opCode = postMessageToRoomCheck(req.body.user, req.params.roomId);
     let status, message;
     switch(opCode){
@@ -141,8 +183,12 @@ server.post('/api/message/send/:roomId', (req, res) => {
 
 });
 
+/*
+On the client side, a thread keeps requesting to the server the most current message.
+If the message it sends is diferent from the most current one, it sends it back to the client.
+*/
 server.post('/api/message/receive/:roomId', (req, res) => {
-    console.log(timestamp() + "Client at " + req.ip + " trying to read messages at room " + req.params.roomId);
+    //console.log(timestamp() + "Client at " + req.ip + " trying to read messages at room " + req.params.roomId);
     const room = rooms.find(r => r.id === req.params.roomId);
     if(room){
         if(room.messages && room.messages.length > 0){
@@ -169,30 +215,7 @@ server.post('/api/message/receive/:roomId', (req, res) => {
 })
 
 
-server.post('/api/rooms/create', (req, res) => {
-    console.log(timestamp() + "Client at " + req.ip + " trying to create room ");
-    let opCode = createRoom(req.body);
-    let status, message;
-    switch(opCode){
-        case 0:
-            status = 200;
-            message = "Created room."
-            console.log(timestamp() + req.ip + " createad a room");
-            break;
-        case 1:
-            status = 401;
-            message = "Max number of rooms reached."
-            console.log(timestamp() + req.ip + " failed to create a room - max number of rooms reached");
-            break;
-        default:
-            status = 500;
-            message = "Internal server error. Contact system administrator."
-            console.log(timestamp() +req.ip + " couldn't post to room " + req.params.roomId +": some obscure error has ocurred."); 
-            break;
-    }
-    res.status(status);
-    res.send({"message" : message});
-})
+
 
 
 server.listen(PORT, () => {
@@ -243,6 +266,7 @@ function removeUserFromRoom(userLeaving, roomId){
     }
 }
 
+//Checks to see if the user is in the specified room.
 function postMessageToRoomCheck(user, roomId){
     for(room in rooms){
         if(rooms[room].id == roomId){
@@ -272,6 +296,7 @@ function postMessageToRoom(user, roomId, message){
         'clientTs': clientTs,
         'ts': ts
     }
+    console.log(messageJson);
     room.messages.push(messageJson);
     for(_room in rooms){
         if(rooms[_room].id == roomId){
@@ -280,6 +305,7 @@ function postMessageToRoom(user, roomId, message){
     }
 }
 
+//The message the server sends to the room when a user leaves it.
 function postLeaveMessage(user, roomId){
     const room = rooms.find(r => r.id === roomId);
     if(room){
@@ -303,7 +329,7 @@ function postLeaveMessage(user, roomId){
 
 function createRoom(roomToCreate){
     if(rooms.length >= MAX_ROOMS){
-        return 0;
+        return 1;
     }else{
         let roomId = getRanHex(6);
         let newRoom = {
@@ -314,10 +340,15 @@ function createRoom(roomToCreate){
             'messages' : []
         }
         rooms.push(newRoom);
-        return 1;
+        return 0;
     }
 }
 
+
+/* 
+Used for generating roomIds.
+TODO: Add UserIds.
+*/
 const getRanHex = size => {
     let result = [];
     let hexRef = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
@@ -333,6 +364,7 @@ function timestamp(){
     return("[" + now.getHours() + ":" + now.getMinutes() + ":" + now.getMilliseconds() + "]");
 }
 
+//A more human friendly timestamp. Used for client side rendering.
 function clientTimestamp(){
     let now = new Date(Date.now());
     let hours = now.getHours();
