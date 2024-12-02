@@ -370,10 +370,10 @@ function clientTimestamp(){
     let now = new Date(Date.now());
     let hours = now.getHours();
     let minutes = now.getMinutes();
-    if(hours.length < 2){
+    if(hours < 10){
         hours = '0' + hours;
     }
-    if(minutes.length < 2){
+    if(minutes < 10){
         minutes = '0' + minutes;
     }
     return("[" + hours + ":" + minutes + "]");
