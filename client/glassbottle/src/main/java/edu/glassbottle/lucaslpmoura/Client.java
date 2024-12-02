@@ -25,7 +25,7 @@ public class Client {
 
     // SERVER ADDRESS
     private static String serverPort = "5000";
-    private static String serverAddress = "http://localHost:5000"; //default server address
+    private static String serverAddress = "http://localHost:5000"; // default server address
 
     // ENDPOINTS
     private static String testEndpoint = "/teste";
@@ -33,7 +33,7 @@ public class Client {
     private static String listRoomsEndpoint = "/api/rooms/list";
     private static String createRoomEndpoint = "/api/rooms/create";
     private static String joinRoomEndpoint = "/api/rooms/join/";
-    private static String leaveRoomEndpoint = "/api/room/sleave/";
+    private static String leaveRoomEndpoint = "/api/rooms/leave/";
     private static String sendMessageEndpoint = "/api/message/send/";
     private static String receiveMessageEndpoint = "/api/message/receive/";
 
@@ -57,7 +57,7 @@ public class Client {
 
     private static State state = State.LOGIN;
 
-    public static enum OS{
+    public static enum OS {
         WINDOWS,
         MAC,
         LINUX
@@ -91,8 +91,9 @@ public class Client {
     public static void login() throws IOException, InterruptedException {
         System.out.print("Enter server address (leave empty for default): ");
         String serverAddr = sc.nextLine();
-        if(!serverAddr.equals("")){
-            serverAddress = "http://" + serverAddr + ":" + serverPort;;
+        if (!serverAddr.equals("")) {
+            serverAddress = "http://" + serverAddr + ":" + serverPort;
+            ;
         }
         System.out.print("Enter your nickname: ");
         nickname = sc.nextLine();
@@ -114,7 +115,7 @@ public class Client {
         while (true) {
             String option = sc.next();
 
-            //If the option is a number, try to join the corresponding room
+            // If the option is a number, try to join the corresponding room
             if (isNumeric(option)) {
                 int roomCode = Integer.parseInt(option);
                 if ((roomCode > 0) && (roomCode <= roomList.length())) {
@@ -131,40 +132,40 @@ public class Client {
                     System.out.println("Please enter an valid option or command.");
                 }
 
-            //If it is a letter, executs the command
+                // If it is a letter, executs the command
             } else {
                 if (option.equals("c")) {
                     clearScreen();
-                    try{
+                    try {
                         createRoom();
                         roomList = listRooms();
                         System.out.println("Created room.");
-                    }catch(Exception e){
+                    } catch (Exception e) {
                         roomList = listRooms();
                         System.out.println(e.getMessage());
                     }
-                }else{
+                } else {
                     if (option.equals("r")) {
                         clearScreen();
                         roomList = listRooms();
                         System.out.println("Room List refreshed.");
                     } else {
-                        if(option.equals("q")) {
+                        if (option.equals("q")) {
                             System.out.println("Goodbye! ");
                             System.exit(0);
-                        }else{
+                        } else {
                             clearScreen();
                             roomList = listRooms();
                             System.out.println("Please enter an valid option or command.");
                         }
                     }
                 }
-                
+
             }
         }
     }
 
-    //Handles creating the request to create a room
+    // Handles creating the request to create a room
 
     public static void createRoom() throws IOException, InterruptedException, Exception {
         System.out.print("Room name: ");
@@ -182,6 +183,7 @@ public class Client {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(serverAddress + createRoomEndpoint))
                 .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(5))
                 .POST(BodyPublishers.ofString(room.toString()))
                 .build();
 
@@ -189,55 +191,52 @@ public class Client {
 
         clearScreen();
 
-        //Failing to create a room
-        if(response.statusCode() != 200){
+        // Failing to create a room
+        if (response.statusCode() != 200) {
             throw new Exception(new JSONObject(response.body()).getString("message"));
         }
-    
+
     }
 
-    //Requst to the server the list of rooms and builds it
+    // Requst to the server the list of rooms and builds it
 
     public static JSONArray listRooms() throws IOException, InterruptedException {
-        try{
+        try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(serverAddress + listRoomsEndpoint)).build();
             HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
-        
-        
 
-        JSONArray roomList = new JSONArray(response.body());
+            JSONArray roomList = new JSONArray(response.body());
 
-        boolean avaiableRooms = true;
-        if (roomList.isEmpty()) {
-            System.out.println("No rooms avaiable.");
-            avaiableRooms = false;
-        }
-
-        if (avaiableRooms) {
-            System.out.println(
-                    "Press the room number to join. Or press 'c' to  create a new room, and 'r' to refresh the list. Press 'q' to exit the program.");
-            for (int i = 0; i < roomList.length(); i++) {
-                System.out.print((i + 1) + ") ");
-                System.out.println(roomList.getJSONObject(i).getString("name"));
+            boolean avaiableRooms = true;
+            if (roomList.isEmpty()) {
+                System.out.println("No rooms avaiable.");
+                avaiableRooms = false;
             }
 
-        //No rooms avaiable
-        } else {
-            System.out.println("Be the first to create a room by pressing 'c'. Press 'r' to refresh the list. Press 'q' to exit the program.");
+            if (avaiableRooms) {
+                System.out.println(
+                        "Press the room number to join. Or press 'c' to  create a new room, and 'r' to refresh the list. Press 'q' to exit the program.");
+                for (int i = 0; i < roomList.length(); i++) {
+                    System.out.print((i + 1) + ") ");
+                    System.out.println(roomList.getJSONObject(i).getString("name"));
+                }
+
+                // No rooms avaiable
+            } else {
+                System.out.println(
+                        "Be the first to create a room by pressing 'c'. Press 'r' to refresh the list. Press 'q' to exit the program.");
+            }
+
+            return roomList;
+        } catch (Exception e) {
+            System.out.println("Couldn't connect to server. Please try again.");
+            System.exit(1);
+            return null;
         }
 
-        return roomList;
-    }catch(Exception e){
-        System.out.println("Couldn't coneect to server. Please try again.");
-        System.exit(1);
-        return null;
     }
 
-    }
-
-
-
-    //Tries to join an existing room
+    // Tries to join an existing room
 
     public static void joinRoom(String roomId) throws IOException, InterruptedException {
         clearScreen();
@@ -263,7 +262,7 @@ public class Client {
         }
     }
 
-    //Leaves the current room
+    // Leaves the current room
 
     public static void leaveRoom() throws IOException, InterruptedException {
         JSONObject jsonMessage = new JSONObject();
@@ -290,15 +289,19 @@ public class Client {
      * When joining a room, creates 2 threads: one for writing, and one for reading.
      * 
      * READ
-     * The read thread keeps making requsts to the server each 800 ms, sendind the last message it recieved.
-     * If it matches the most current message on the server side, it simply does nothing.
-     * Else, it prints the last message. 
-     *   
+     * The read thread keeps making requsts to the server each 800 ms, sendind the
+     * last message it recieved.
+     * If it matches the most current message on the server side, it simply does
+     * nothing.
+     * Else, it prints the last message.
+     * 
      * WRITE
-     * Reads the input from the user and creates the JSON object for the server to parse the message.
+     * Reads the input from the user and creates the JSON object for the server to
+     * parse the message.
      * After that, it deletes the current line.
      * 
-     * Doing it that way prevents the 2 operations from blocking one another, but I admit that this code is not the most elegant.
+     * Doing it that way prevents the 2 operations from blocking one another, but I
+     * admit that this code is not the most elegant.
      */
 
     public static void parseRoom() throws IOException, InterruptedException {
@@ -332,7 +335,7 @@ public class Client {
                         Thread.sleep(500);
                     } catch (Exception e) {
                         System.out.println("Error reading message from server. ");
-                        if(e.getMessage() != null){
+                        if (e.getMessage() != null) {
                             System.out.println(e.getMessage());
                         }
                         setClientState("MAIN_MENU");
@@ -342,7 +345,7 @@ public class Client {
 
             }
         };
-        
+
         boolean firstTime = true;
         while (currentRoomId != "") {
             // System.out.print("Message: ");
@@ -352,7 +355,7 @@ public class Client {
             }
             String message = sc.nextLine();
 
-            //Leaving the room
+            // Leaving the room
             if (message.equals("q")) {
                 leaveRoom();
                 state = State.MAIN_MENU;
@@ -380,7 +383,7 @@ public class Client {
                     System.out.println(resp.getString("message"));
                 }
 
-                //Just so the "Joined room." message doesnt gets deleted
+                // Just so the "Joined room." message doesnt gets deleted
                 if (firstTime) {
                     firstTime = false;
                 } else {
@@ -404,15 +407,15 @@ public class Client {
         System.out.println(message.get("content"));
     }
 
-    //If the server sends a message, no user is displayed
-    private static void printServerMessage(JSONObject message){
+    // If the server sends a message, no user is displayed
+    private static void printServerMessage(JSONObject message) {
         System.out.print(message.get("clientTs") + " ");
         System.out.println(message.get("content"));
     }
 
-    //Needed so that the read thread can alter the state of the state machine
-    public static void setClientState(String newState){
-        if(newState.equals("MAIN_MENU")){
+    // Needed so that the read thread can alter the state of the state machine
+    public static void setClientState(String newState) {
+        if (newState.equals("MAIN_MENU")) {
             state = State.MAIN_MENU;
         }
     }
@@ -426,40 +429,40 @@ public class Client {
         }
     }
 
-    //Why Microsoft... "clear" was fine
-    private static OS detectOS(){
+    // Why Microsoft... "clear" was fine
+    private static OS detectOS() {
         String currentOS = System.getProperty("os.name");
-        if(currentOS.startsWith("Windows")){
+        if (currentOS.startsWith("Windows")) {
             return OS.WINDOWS;
         }
-        if(currentOS.startsWith("Linux")){
+        if (currentOS.startsWith("Linux")) {
             return OS.LINUX;
         }
-        if(currentOS.startsWith("Ubuntu")){
+        if (currentOS.startsWith("Ubuntu")) {
             return OS.LINUX;
         }
-        if(currentOS.startsWith("Debian")){
+        if (currentOS.startsWith("Debian")) {
             return OS.LINUX;
         }
-        if(currentOS.startsWith("Mac")){
+        if (currentOS.startsWith("Mac")) {
             return OS.MAC;
         }
-        if(currentOS.startsWith("Darwin")){
+        if (currentOS.startsWith("Darwin")) {
             return OS.MAC;
         }
         return null;
     }
 
-    private static void clearScreen(){
-        try{
-            if(detectedOS.equals(OS.WINDOWS)){
+    private static void clearScreen() {
+        try {
+            if (detectedOS.equals(OS.WINDOWS)) {
                 new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-            }else{
+            } else {
                 System.out.print("\033\143");
             }
-        }catch(Exception e){
+        } catch (Exception e) {
             System.out.println("Error clearing screen: " + e.getMessage());
         }
-        
+
     }
 }

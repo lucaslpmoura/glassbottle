@@ -13,7 +13,7 @@ server.use(express.json());
 server.set('trust proxy', true)
 const PORT = 5000;
 
-const MAX_ROOMS = 1;
+const MAX_ROOMS = 4;
 const MAX_USERS = 10;
 
 var currentUsers = 0;
@@ -250,6 +250,7 @@ function removeUserFromRoom(userLeaving, roomId){
         const user = room.users.find(u => compareUsers(u, userLeaving));
         if(user){
             room.users = room.users.filter(u => u != user);
+            console.log(room.currentUsers);
             if(room.currentUsers > 0){
                 room.currentUsers = room.currentUsers - 1;
                 
